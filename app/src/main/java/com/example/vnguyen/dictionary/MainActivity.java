@@ -2,6 +2,7 @@ package com.example.vnguyen.dictionary;
 
 import android.app.Application;
 import android.content.pm.ApplicationInfo;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.os.Bundle;
@@ -24,9 +25,14 @@ public class MainActivity extends AppCompatActivity {
 
     // Set database
     SQLiteDatabase DICT_DATA;
-    String DICT_NAME = "dictionary";
     boolean DICT_AVAILABLE = false;
     String SQL_FILE_PATH = "dict_en_vi.sql";
+    String DATABASE_NAME = "dictionary";
+    String DICT_TABLE_NAME = "dict_en_vi";
+    String WORD = "word";
+    String PHONETIC = "phonetic";
+    String MEANING = "meanings";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,18 +50,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        DICT_AVAILABLE = checkDict();
+        getDatabase();
+    }
+
+    public void getDatabase() {
+        //DICT_AVAILABLE = checkDict();
         if(!DICT_AVAILABLE){
             // Dictionary is not available, wait to import form SQL file
-            DICT_DATA = openOrCreateDatabase(DICT_NAME, MODE_PRIVATE, null);
-            DICT_DATA.execSQL("CREATE TABLE IF NOT EXISTS dict_en_vi(id INTEGER PRIMARY KEY AUTOINCREMENT,word varchar(64) NOT NULL,phonetic varchar(64) NOT NULL,meanings text NOT NULL)");
-            try {
-                String file = readSQL();
-                DICT_DATA.execSQL(file);
-
-            } catch (IOException e) {
-                Log.e("ERROR", " WHEN READ SQL FILE",e);
-            }
+            DICT_DATA = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
+            DICT_DATA.execSQL("CREATE TABLE IF NOT EXISTS dict_en_vi(id INTEGER PRIMARY KEY AUTOINCREMENT,word varchar(64) NOT NULL,phonetic varchar(64) NOT NULL,meanings text NOT NULL);");
+            DICT_DATA.execSQL("INSERT INTO dict_en_vi VALUES(1,'hello','helo','Xin chao');");
+//            try {
+//                String file = readSQL();
+//                DICT_DATA.execSQL(file);
+//
+//            } catch (IOException e) {
+//                Log.e("ERROR", " WHEN READ SQL FILE",e);
+//            }
 
         }
     }
@@ -88,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         String input = format(editText.getText().toString());
         String result;
         if(input == null || input.length() == 0) {
-            result = "Cannot find the word";
+            result = "Empty Input";
         } else {
             result = lookUp(input);
         }
@@ -107,19 +118,27 @@ public class MainActivity extends AppCompatActivity {
 
     // find the word
     public String lookUp(String in) {
-        return in;
+        String sql = "SELECT * FROM " + DICT_TABLE_NAME + " WHERE " + WORD + "=" + in;
+        Cursor resultSet = DICT_DATA.rawQuery(sql, null);
+        resultSet.moveToFirst();
+        String phonetic = resultSet.getString(3);
+        String meaning = resultSet.getString(4);
+
+        return "\n" + phonetic + "\n" + meaning;
+
     }
 
     // Check if dictionary is available
     public boolean checkDict() {
         SQLiteDatabase checkDB = null;
         try {
-            checkDB = SQLiteDatabase.openDatabase(DICT_NAME, null, SQLiteDatabase.OPEN_READONLY);
+            checkDB = SQLiteDatabase.openDatabase(DATABASE_NAME, null, SQLiteDatabase.OPEN_READONLY);
         } catch (SQLiteException e){
             Log.e("ERROR", " WHEN CHECK SQL DB", e);
+            return false;
         }
 
-        return (checkDB == null)?false:true;
+        return true;
     }
 
     // Read the SQL command from a file
